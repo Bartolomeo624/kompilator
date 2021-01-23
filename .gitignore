@@ -1,0 +1,7 @@
+venv
+.git
+.idea
+testy
+testy2020
+__pycache__
+*.txts
