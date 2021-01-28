@@ -103,6 +103,13 @@ class _Parser(Parser):
        'value MUL value', 'value DIV value',
        'value MOD value')
     def expression(self, p):
+        if p.value0 == p.value1:
+            if p[1] == '-':
+                return ("NUM", "0", p.lineno)
+            elif p[1] == '/':
+                return ("NUM", "1", p.lineno)
+            elif p[1] == '%':
+                return ("NUM", "0", p.lineno)
         return (p[1], p.value0, p.value1, p.lineno)
 
     @_('value EQ value', 'value NEQ value',
