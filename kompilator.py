@@ -28,6 +28,10 @@ class Compiler(object):
             'FOR_DT': self.for_downto_loop,
         }
 
+    """
+    BASIC COMPILER FUNCTIONS ######################################################################
+    """
+
     def check_errors(self):
         return bool(self.error + self.Variables.error)
 
@@ -72,18 +76,38 @@ class Compiler(object):
             self.Variables.Memory.iterators_cells = max_iterators
             self.Variables.Memory.memory += [max_iterators + 2]
 
+    """
+    ITERATOR FUNCTIONS ############################################################################
+    """
+
     def declare_iterator(self, name, ast_init_rvalue, line, register="A", buffer2="F"):
+        """
+        Creates new int iterator variable with given name. Checks if init value is valid. Generates
+        instructions which store the iterator and its value. In the end the value of iterator
+        remains in :register: and its address remains in :buffer2:.
+        :param name: Name of given iterator
+        :param ast_init_rvalue: AST tuple with initial value info for iterator
+        :param line: line number
+        :param register: register in which the init value will be stored
+        :param buffer2: register in which the iterators address will be stored
+        :return:
+        """
+        self.check_rvalue(ast_init_rvalue)
         self.Variables.new_iterator(name, line)
         iterator = self.Variables[name]
         if not iterator.is_iterator:
             raise Exception("NOT AN ITERATOR")
-        self.check_rvalue(ast_init_rvalue)
         address = self.Variables.get_iterator_address(name)
         self.store_value_in_reg(ast_init_rvalue, register=register, buffer=buffer2)
         self.generate_value(buffer2, address)
         self.Instructions.store(register, buffer2)  # iterator starting value remains in register
 
     def delete_iterator(self, name):
+        """
+        Undeclares iterator with given name
+        :param name: iterator name
+        :return:
+        """
         self.Variables.delete_iterator(name)
 
     def make_declarations(self, declarations):
@@ -126,11 +150,22 @@ class Compiler(object):
                                         end_index=end)
 
     def make_instructions(self, instructions):
+        """
+        Driver function which performs instructions.
+        :param instructions: list of AST fragments with instructions. list of tuples.
+        :return:
+        """
         for inst_ast in instructions:
             inst_type = inst_ast[0]
             self.operation[inst_type](inst_ast)
 
     def copy_reg(self, register1, register2):
+        """
+        Copies value of register2 to register 1. It doesn't change value of register2.
+        :param register1: target register.
+        :param register2: source register.
+        :return:
+        """
         # reg1 <- reg2
         self.Instructions.reset(register1)
         self.Instructions.add(register1, register2)
@@ -156,6 +191,15 @@ class Compiler(object):
         self.Registers.set_reg(reg_name, value)
 
     def assign(self, ast_node, buffer="B", buffer2="A", buffer3="F"):
+        """
+        Handles assigment in code. In the end - value of buffer is lvalue address and value of
+        buffer2 is rvalue
+        :param ast_node: ast tuple with assign info
+        :param buffer:
+        :param buffer2:
+        :param buffer3:
+        :return:
+        """
         # unpack
         lvalue = ast_node[1]
         rvalue = ast_node[2]
@@ -224,6 +268,14 @@ class Compiler(object):
             self.Instructions.put(buffer)
 
     def store_value_in_reg(self, ast_node, register="B", buffer="F"):
+        """
+        Checks value in ast_node and generates it in register, no matter whether it is number, int,
+        tab value or arithmetic operation
+        :param ast_node:
+        :param register:
+        :param buffer:
+        :return:
+        """
         if register == buffer:
             raise Exception("use two different registers")
         node_type = ast_node[0]
@@ -243,11 +295,25 @@ class Compiler(object):
             self.load_tab(tab_var, index, register=register, buffer=buffer)
 
     def load_int(self, _int, register="A"):
+        """
+        loads int variable value to a given register
+        :param _int:
+        :param register:
+        :return:
+        """
         address = _int.address
         self.generate_value(register, address)
         self.Instructions.load(register, register)
 
     def load_tab(self, _tab, index_ast_node, register="A", buffer="F"):
+        """
+        loads tab value to a given register
+        :param _tab:
+        :param index_ast_node:
+        :param register:
+        :param buffer:
+        :return:
+        """
         index_type = index_ast_node[0]
         if index_type == "NUM":
             index = int(index_ast_node[1])
@@ -266,6 +332,14 @@ class Compiler(object):
 
     def load_tab_element_address(self, tab_ast_node, register="A", buffer="F",
                                  initialization=False):
+        """
+        loads tab's element address to a given register
+        :param tab_ast_node:
+        :param register:
+        :param buffer:
+        :param initialization:
+        :return:
+        """
         tab_name = tab_ast_node[1]
         _tab = self.Variables[tab_name]
         index_ast_node = tab_ast_node[2]
@@ -357,9 +431,9 @@ class Compiler(object):
         label1 = self.Instructions.new_label()
         label2 = self.Instructions.new_label()
         endfor_name = iterator_name + "TO"
+        self.declare_iterator(endfor_name, ast_to_value, line, register=buffer2, buffer2=buffer3)
         self.declare_iterator(iterator_name, ast_init_value, line, register=buffer1,
                               buffer2=buffer3)
-        self.declare_iterator(endfor_name, ast_to_value, line, register=buffer2, buffer2=buffer3)
         endfor = self.Variables[endfor_name]
         self.Instructions.put_label(label1)
         self.leq(register1=buffer1, register2=buffer2)
@@ -385,9 +459,9 @@ class Compiler(object):
         label2 = self.Instructions.new_label()
         label3 = self.Instructions.new_label()
         endfor_name = iterator_name + "DOWNTO"
-        self.declare_iterator(iterator_name, ast_init_value, line, register=buffer1,
-                              buffer2=buffer3)
         self.declare_iterator(endfor_name, ast_downto_value, line, register=buffer2,
+                              buffer2=buffer3)
+        self.declare_iterator(iterator_name, ast_init_value, line, register=buffer1,
                               buffer2=buffer3)
         endfor = self.Variables[endfor_name]
 
@@ -473,9 +547,9 @@ class Compiler(object):
     def neq(self, register1, register2, buffer):
         # if reg1 > reg2 OR reg 2 > reg 1
         self.copy_reg(buffer, register2)
-        self.Instructions.sub(buffer, register2)
-        self.Instructions.sub(register1, register2)
-        self.Instructions.add(register1, buffer)
+        self.Instructions.sub(buffer, register1)  # r1 - r2, =0 if r1 <= r2
+        self.Instructions.sub(register1, register2)  # r2 - r1, =0 if r1 >= r2
+        self.Instructions.add(register1, buffer)  # sum be > 0 if r1 > r2 or r2 > r1
 
     def do_arithmetics(self, ast_node, register="B",
                        buffer="C", buffer1="D", buffer2="E", buffer3="F", buffer4="A"):
@@ -588,6 +662,11 @@ class Compiler(object):
         self.div(ast_node, register=buffer, buffer=register)
 
     def check_lvalue(self, var_info):
+        """
+        Checks if a thing described in ast var_info can be a variable, which can be updated.
+        :param var_info:
+        :return:
+        """
         var_type = var_info[0]
         var_name = var_info[1]
         line = var_info[-1]
@@ -656,6 +735,11 @@ class Compiler(object):
         return True
 
     def check_rvalue(self, ast_node):
+        """
+        Checks if a thing described in ast_node is a existing valid value.
+        :param ast_node:
+        :return:
+        """
         node_type = ast_node[0]
         line = ast_node[-1]
         if node_type == "NUM":

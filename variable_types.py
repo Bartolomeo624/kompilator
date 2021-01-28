@@ -59,7 +59,7 @@ class VariableManager(object):
         try:
             return self.variables[var_name]
         except KeyError:
-            raise KeyError
+            raise KeyError("no such variable as {}".format(var_name))
 
     def new_variable(self, name, _type, line, start_index=None, end_index=None):
         if name in self.variables.keys():

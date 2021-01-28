@@ -1,7 +1,10 @@
 venv
 .git
 .idea
+test*
 testy
 testy2020
 __pycache__
 *.txts
+maszyna_wirtualna
+out
