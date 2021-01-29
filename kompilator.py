@@ -286,13 +286,26 @@ class Compiler(object):
             self.do_arithmetics(ast_node, register=register, buffer=buffer)
         elif node_type == "int":
             var_name = ast_node[1]
-            int_var = self.Variables[var_name]
-            self.load_int(int_var, register)
+            try:
+                int_var = self.Variables[var_name]
+                self.load_int(int_var, register)
+            except KeyError:
+                self.error = True
+                print("Error! line {}\n"
+                      "Variable '{}' was not declared\n"
+                      .format(ast_node[-1], var_name), file=sys.stderr)
+
         elif node_type == "tab":
             var_name = ast_node[1]
             index = ast_node[2]
-            tab_var = self.Variables[var_name]
-            self.load_tab(tab_var, index, register=register, buffer=buffer)
+            try:
+                tab_var = self.Variables[var_name]
+                self.load_tab(tab_var, index, register=register, buffer=buffer)
+            except KeyError:
+                self.error = True
+                print("Error! line {}\n"
+                      "Variable '{}' was not declared\n"
+                      .format(ast_node[-1], var_name), file=sys.stderr)
 
     def load_int(self, _int, register="A"):
         """
@@ -588,7 +601,7 @@ class Compiler(object):
         self.store_value_in_reg(right_op, buffer, buffer=buffer2)
         self.Instructions.sub(register, buffer)
 
-    def mul(self, ast_node, register="B", buffer="C", buffer1="D"):
+    def mul(self, ast_node, register="B", buffer="C", buffer1="D", buffer2="E", buffer3="F"):
         left_op = ast_node[1]
         right_op = ast_node[2]
         self.check_rvalue(left_op)
@@ -597,12 +610,24 @@ class Compiler(object):
         if left_op[0] == right_op[0] == 'NUM' and int(left_op[1]) < int(right_op[1]):
             left_op, right_op = right_op, left_op
 
+        label0 = self.Instructions.new_label()
         label1 = self.Instructions.new_label()
         label2 = self.Instructions.new_label()
         label3 = self.Instructions.new_label()
         label4 = self.Instructions.new_label()
         self.store_value_in_reg(left_op, register=buffer, buffer=register)
         self.store_value_in_reg(right_op, register=buffer1, buffer=register)
+
+        self.copy_reg(buffer2, buffer)  # left op in buffer2
+        self.copy_reg(buffer3, buffer1)  # right op in buffer3
+
+        self.Instructions.sub(buffer3, buffer2)  # a * b more efficient when a > b
+        self.Instructions.jzero(buffer3, label0)
+        self.copy_reg(register, buffer)
+        self.copy_reg(buffer, buffer1)
+        self.copy_reg(buffer1, register)
+
+        self.Instructions.put_label(label0)
         self.Instructions.reset(register)
         self.Instructions.put_label(label1)
         self.Instructions.jzero(buffer1, label4)
@@ -776,6 +801,7 @@ class Compiler(object):
                         print("Error! line {}\n"
                               "{} element of tab {} is not initialized\n"
                               .format(line, num, var_name), file=sys.stderr)
+                        return False
 
                 elif index_type == "int":
                     int_name = index[1]

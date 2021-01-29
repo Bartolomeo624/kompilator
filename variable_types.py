@@ -56,10 +56,7 @@ class VariableManager(object):
         self.error = False
 
     def __getitem__(self, var_name):
-        try:
-            return self.variables[var_name]
-        except KeyError:
-            raise KeyError("no such variable as {}".format(var_name))
+        return self.variables[var_name]
 
     def new_variable(self, name, _type, line, start_index=None, end_index=None):
         if name in self.variables.keys():
@@ -73,6 +70,9 @@ class VariableManager(object):
                 address = self.Memory.allocate(1)
                 self.variables[name] = Int(lineno=line, address=address)
             elif _type == "tab":
+                if start_index > end_index:
+                    print("Error! line {}\n"
+                          "Invalid range of tab {}\n".format(line, name), file=sys.stderr)
                 tab_size = end_index - start_index + 1
                 address = self.Memory.allocate(tab_size)
                 self.variables[name] = Tab(lineno=line,

@@ -106,11 +106,9 @@ class _Parser(Parser):
         if p.value0 == p.value1:
             if p[1] == '-':
                 return ("NUM", "0", p.lineno)
-            elif p[1] == '/':
-                return ("NUM", "1", p.lineno)
             elif p[1] == '%':
                 return ("NUM", "0", p.lineno)
-        elif p[1] == "*":
+        elif p[1] == "*" or p[1] == "/":
             if any(v[0] == "NUM" and v[1] == "0" for v in [p.value0, p.value1]):
                 return ("NUM", "0", p.lineno)
         return (p[1], p.value0, p.value1, p.lineno)

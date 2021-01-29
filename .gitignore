@@ -6,6 +6,6 @@ testy
 testy2020
 __pycache__
 *.txts
-maszyna_wirtualna
+maszyna*
 out
 *.sh
