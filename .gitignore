@@ -8,3 +8,4 @@ __pycache__
 *.txts
 maszyna_wirtualna
 out
+*.sh

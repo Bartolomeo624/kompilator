@@ -594,6 +594,9 @@ class Compiler(object):
         self.check_rvalue(left_op)
         self.check_rvalue(right_op)
 
+        if left_op[0] == right_op[0] == 'NUM' and int(left_op[1]) < int(right_op[1]):
+            left_op, right_op = right_op, left_op
+
         label1 = self.Instructions.new_label()
         label2 = self.Instructions.new_label()
         label3 = self.Instructions.new_label()
